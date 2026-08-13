@@ -1,2 +1,3 @@
 - Add colored underlines under selected text
 - Add detailed configuration options for this plugin
+- Add option to combine highlight styles (background + text + underline or whatever) together
