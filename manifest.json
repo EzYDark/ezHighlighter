@@ -1,0 +1,9 @@
+{
+  "id": "ez-highlighter",
+  "name": "ezHighlighter",
+  "version": "1.0.0",
+  "minAppVersion": "1.13.0",
+  "description": "Prototype text and background highlighter using theme-aware colors.",
+  "author": "EzYDark",
+  "isDesktopOnly": false
+}

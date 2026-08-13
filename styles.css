@@ -1,0 +1,92 @@
+/* Highlight text and menu swatches always follow the active theme palette. */
+
+.ez-highlighter-pink {
+  --ez-highlighter-color: var(--color-pink);
+}
+
+.ez-highlighter-red {
+  --ez-highlighter-color: var(--color-red);
+}
+
+.ez-highlighter-orange {
+  --ez-highlighter-color: var(--color-orange);
+}
+
+.ez-highlighter-yellow {
+  --ez-highlighter-color: var(--color-yellow);
+}
+
+.ez-highlighter-green {
+  --ez-highlighter-color: var(--color-green);
+}
+
+.ez-highlighter-cyan {
+  --ez-highlighter-color: var(--color-cyan);
+}
+
+.ez-highlighter-blue {
+  --ez-highlighter-color: var(--color-blue);
+}
+
+.ez-highlighter-purple {
+  --ez-highlighter-color: var(--color-purple);
+}
+
+.ez-highlighter-grey {
+  --ez-highlighter-color: var(--color-base-50);
+}
+
+.ez-highlighter-highlight {
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+/* Text highlights color only the glyphs, with no box or background. */
+.ez-highlighter-highlight--text {
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--ez-highlighter-color) !important;
+}
+
+/*
+ * Background highlights blend into the theme surface instead of putting
+ * normal text directly on a fully saturated palette color. This preserves
+ * the theme's readable text color in both light and dark themes.
+ */
+.ez-highlighter-highlight--background {
+  padding: 0 0.2em;
+  border-radius: var(--radius-s) !important;
+  background: color-mix(
+    in srgb,
+    var(--ez-highlighter-color) 38%,
+    var(--background-primary)
+  ) !important;
+  color: var(--text-normal) !important;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/*
+ * Obsidian also parses ==color|text== as a native highlight. Some themes put
+ * that native background on a wrapper around our visible decoration. Remove
+ * it only for ezHighlighter content; ordinary ==text== stays unchanged.
+ */
+.markdown-source-view.mod-cm6
+  .cm-highlight:has(.ez-highlighter-live-preview) {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  text-decoration: inherit !important;
+}
+
+.ez-highlighter-swatch {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-inline-end: 0.55em;
+  border-radius: 50%;
+  background-color: var(--ez-highlighter-color);
+  box-shadow: 0 0 0 1px var(--background-modifier-border);
+  vertical-align: middle;
+}
