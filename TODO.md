@@ -1,0 +1,2 @@
+- Add colored underlines under selected text
+- Add detailed configuration options for this plugin

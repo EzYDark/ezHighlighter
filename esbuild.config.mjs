@@ -23,11 +23,15 @@ const copyPluginFiles = {
             }
 
             await Promise.all([
+                copyFile(outfile, "main.js"),
                 copyFile("manifest.json", `${exportDirectory}/manifest.json`),
                 copyFile("styles.css", `${exportDirectory}/styles.css`),
             ]);
 
-            console.log(`Built plugin files in ${exportDirectory}`);
+            console.log(
+                `Built plugin files in ${exportDirectory} and synced main.js `
+                + "to the plugin root",
+            );
         });
     },
 };

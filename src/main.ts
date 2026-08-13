@@ -26,12 +26,15 @@ import {
 } from "./syntax";
 
 type SubmenuCapableItem = MenuItem & {
+    callback?: (event: MouseEvent | KeyboardEvent) => unknown;
     dom?: HTMLElement;
     submenu?: Menu | null;
     setSubmenu?: () => Menu;
 };
 
 type InspectableMenu = Menu & {
+    currentSubmenu?: Menu | null;
+    dom?: HTMLElement;
     items?: unknown[];
 };
 
@@ -158,7 +161,6 @@ export default class EzHighlighterPlugin extends Plugin {
                 editor,
                 existingHighlight,
                 canRemoveHighlights,
-                document,
             );
         } else {
             this.populateColorMenu(
@@ -166,7 +168,6 @@ export default class EzHighlighterPlugin extends Plugin {
                 editor,
                 existingHighlight,
                 styleId,
-                document,
                 true,
                 canRemoveHighlights,
             );
@@ -205,7 +206,16 @@ export default class EzHighlighterPlugin extends Plugin {
 
         const canRemoveHighlights = this.hasHighlightsForRemoval(editor);
 
-        const coreItem = this.findCoreHighlightMenuItem(menu);
+        const formatMenu = this.findCoreFormatMenu(menu);
+
+        if (formatMenu) {
+            this.integrateContextMenuClearFormatting(formatMenu, editor);
+        }
+
+        const coreItem = this.findMenuItemByIcon(
+            formatMenu,
+            ".lucide-highlighter",
+        );
 
         if (coreItem && this.attachHighlightSubmenu(
             coreItem,
@@ -261,7 +271,7 @@ export default class EzHighlighterPlugin extends Plugin {
         return true;
     }
 
-    private findCoreHighlightMenuItem(menu: Menu): MenuItem | null {
+    private findCoreFormatMenu(menu: Menu): InspectableMenu | null {
         const items = (menu as InspectableMenu).items;
 
         if (!Array.isArray(items)) {
@@ -273,27 +283,67 @@ export default class EzHighlighterPlugin extends Plugin {
                 continue;
             }
 
-            const submenu = (entry as SubmenuCapableItem).submenu;
-            const submenuItems = (submenu as InspectableMenu | null)?.items;
+            const submenu = (
+                entry as SubmenuCapableItem
+            ).submenu as InspectableMenu | null;
+            const submenuItems = submenu?.items;
 
             if (!Array.isArray(submenuItems)) {
                 continue;
             }
 
-            for (const submenuEntry of submenuItems) {
-                if (!(submenuEntry instanceof MenuItem)) {
-                    continue;
-                }
-
-                const element = (submenuEntry as SubmenuCapableItem).dom;
-
-                if (element?.querySelector(".lucide-highlighter")) {
-                    return submenuEntry;
-                }
+            if (this.findMenuItemByIcon(submenu, ".lucide-highlighter")) {
+                return submenu;
             }
         }
 
         return null;
+    }
+
+    private findMenuItemByIcon(
+        menu: InspectableMenu | null,
+        selector: string,
+    ): MenuItem | null {
+        if (!Array.isArray(menu?.items)) {
+            return null;
+        }
+
+        for (const entry of menu.items) {
+            if (!(entry instanceof MenuItem)) {
+                continue;
+            }
+
+            const element = (entry as SubmenuCapableItem).dom;
+
+            if (element?.querySelector(selector)) {
+                return entry;
+            }
+        }
+
+        return null;
+    }
+
+    private integrateContextMenuClearFormatting(
+        formatMenu: InspectableMenu,
+        editor: Editor,
+    ): void {
+        const clearItem = this.findMenuItemByIcon(
+            formatMenu,
+            ".lucide-eraser",
+        ) as SubmenuCapableItem | null;
+        const originalCallback = clearItem?.callback;
+
+        if (!clearItem || typeof originalCallback !== "function") {
+            return;
+        }
+
+        clearItem.onClick((event) => {
+            if (editor.somethingSelected()) {
+                this.removeSelectedHighlights(editor, false);
+            }
+
+            originalCallback(event);
+        });
     }
 
     private populateHighlightMenu(
@@ -301,7 +351,6 @@ export default class EzHighlighterPlugin extends Plugin {
         editor: Editor,
         existingHighlight: HighlightRange | null,
         canRemoveHighlights: boolean,
-        fallbackDocument: Document = activeDocument,
     ): void {
         for (const style of HIGHLIGHT_STYLES) {
             highlightMenu.addItem((item) => {
@@ -321,12 +370,13 @@ export default class EzHighlighterPlugin extends Plugin {
                     editor,
                     existingHighlight,
                     style.id,
-                    fallbackDocument,
                     false,
                     canRemoveHighlights,
                 );
             });
         }
+
+        this.enableNestedSubmenuHandoff(highlightMenu);
 
         if (!canRemoveHighlights) {
             return;
@@ -335,23 +385,48 @@ export default class EzHighlighterPlugin extends Plugin {
         this.addRemoveItem(highlightMenu, editor);
     }
 
+    private enableNestedSubmenuHandoff(menu: Menu): void {
+        const nestedMenu = menu as InspectableMenu;
+        const menuElement = nestedMenu.dom;
+
+        if (!menuElement) {
+            return;
+        }
+
+        menuElement.addEventListener("pointerover", (event) => {
+            const target = event.target as Node | null;
+
+            if (!target) {
+                return;
+            }
+
+            const hoveredItem = nestedMenu.items?.find((entry) =>
+                entry instanceof MenuItem
+                && (entry as SubmenuCapableItem).dom?.contains(target)
+            ) as SubmenuCapableItem | undefined;
+            const currentSubmenu = nestedMenu.currentSubmenu;
+
+            if (
+                currentSubmenu
+                && currentSubmenu !== hoveredItem?.submenu
+            ) {
+                currentSubmenu.hide();
+            }
+        });
+    }
+
     private populateColorMenu(
         colorMenu: Menu,
         editor: Editor,
         existingHighlight: HighlightRange | null,
         styleId: HighlightStyleId,
-        fallbackDocument: Document,
         includeRemove: boolean,
         canRemoveHighlights: boolean,
     ): void {
         for (const color of HIGHLIGHT_COLORS) {
             colorMenu.addItem((item) => {
-                const document =
-                    (item as SubmenuCapableItem).dom?.ownerDocument
-                    ?? fallbackDocument;
-
                 item
-                    .setTitle(this.createColorLabel(color, document))
+                    .setTitle(this.createColorLabel(color))
                     .setChecked(
                         existingHighlight?.styleId === styleId
                         && existingHighlight.colorId === color.id,
@@ -389,19 +464,17 @@ export default class EzHighlighterPlugin extends Plugin {
         });
     }
 
-    private createColorLabel(
-        color: HighlightColor,
-        document: Document,
-    ): DocumentFragment {
-        const fragment = document.createDocumentFragment();
-        const swatch = document.createElement("span");
-        const label = document.createElement("span");
+    private createColorLabel(color: HighlightColor): DocumentFragment {
+        const fragment = createFragment();
 
-        swatch.className =
-            `ez-highlighter-swatch ez-highlighter-swatch--${color.id} `
-            + `ez-highlighter-${color.id}`;
-        label.textContent = color.label;
-        fragment.append(swatch, label);
+        fragment.createSpan({
+            cls: [
+                "ez-highlighter-swatch",
+                `ez-highlighter-swatch--${color.id}`,
+                `ez-highlighter-${color.id}`,
+            ],
+        });
+        fragment.createSpan({ text: color.label });
 
         return fragment;
     }
@@ -559,7 +632,7 @@ export default class EzHighlighterPlugin extends Plugin {
                         this.removeSelectedHighlights(editor, false);
                     }
 
-                    return originalCallback();
+                    originalCallback();
                 };
 
                 command.callback = wrappedCallback;
@@ -580,13 +653,45 @@ export default class EzHighlighterPlugin extends Plugin {
                         this.removeSelectedHighlights(editor, false);
                     }
 
-                    return originalEditorCallback(editor, context);
+                    originalEditorCallback(editor, context);
                 };
 
                 command.editorCallback = wrappedEditorCallback;
                 this.register(() => {
                     if (command.editorCallback === wrappedEditorCallback) {
                         command.editorCallback = originalEditorCallback;
+                    }
+                });
+            }
+
+            if (command.editorCheckCallback) {
+                const originalEditorCheckCallback =
+                    command.editorCheckCallback;
+                const wrappedEditorCheckCallback:
+                    typeof originalEditorCheckCallback = (
+                        checking,
+                        editor,
+                        context,
+                    ) => {
+                        if (!checking && editor.somethingSelected()) {
+                            this.removeSelectedHighlights(editor, false);
+                        }
+
+                        return originalEditorCheckCallback(
+                            checking,
+                            editor,
+                            context,
+                        );
+                    };
+
+                command.editorCheckCallback = wrappedEditorCheckCallback;
+                this.register(() => {
+                    if (
+                        command.editorCheckCallback
+                        === wrappedEditorCheckCallback
+                    ) {
+                        command.editorCheckCallback =
+                            originalEditorCheckCallback;
                     }
                 });
             }

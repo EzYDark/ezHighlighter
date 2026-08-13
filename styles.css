@@ -36,17 +36,17 @@
   --ez-highlighter-color: var(--color-base-50);
 }
 
-.ez-highlighter-highlight {
-  box-shadow: none !important;
-  text-decoration: none !important;
+body .ez-highlighter-highlight {
+  box-shadow: none;
+  text-decoration: none;
 }
 
 /* Text highlights color only the glyphs, with no box or background. */
-.ez-highlighter-highlight--text {
-  padding: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  color: var(--ez-highlighter-color) !important;
+body .ez-highlighter-highlight.ez-highlighter-highlight--text {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ez-highlighter-color);
 }
 
 /*
@@ -54,23 +54,23 @@
  * normal text directly on a fully saturated palette color. This preserves
  * the theme's readable text color in both light and dark themes.
  */
-.ez-highlighter-highlight--background {
+body .ez-highlighter-highlight.ez-highlighter-highlight--background {
   padding: 0 0.2em;
-  border-radius: var(--radius-s) !important;
+  border-radius: var(--radius-s);
   background: color-mix(
     in srgb,
     var(--ez-highlighter-color) 38%,
     var(--background-primary)
-  ) !important;
-  color: var(--text-normal) !important;
+  );
+  color: var(--text-normal);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
 
 /*
- * Obsidian also parses ==color|text== as a native highlight. Some themes put
- * that native background on a wrapper around our visible decoration. Remove
- * it only for ezHighlighter content; ordinary ==text== stays unchanged.
+ * Obsidian also parses ==color|text== as a native highlight. Reset that
+ * native wrapper only when it contains an ezHighlighter live-preview mark.
+ * Ordinary ==text== highlights remain unchanged.
  */
 .markdown-source-view.mod-cm6
   .cm-highlight:has(.ez-highlighter-live-preview) {

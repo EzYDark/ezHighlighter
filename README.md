@@ -78,8 +78,11 @@ npm test
 npm run build
 ```
 
-Every build writes only to `export/ez-highlighter/`. The project root stays
-source-only. For continuous rebuilding while editing, run:
+Every build creates the complete distributable package in
+`export/ez-highlighter/`. It also mirrors the generated `main.js` into the
+project root, beside the source `manifest.json` and `styles.css`, so Obsidian
+can load this development checkout directly. For continuous rebuilding while
+editing, run:
 
 ```shell
 npm run dev
@@ -126,7 +129,7 @@ _scripts/build-release.bat
 The script validates and exports the plugin, then creates a versioned archive:
 
 ```text
-export/ez-highlighter-v1.0.0.zip
+export/ez-highlighter-v1.0.1.zip
 ```
 
 The ZIP contains the complete `ez-highlighter` folder. Extract it directly
